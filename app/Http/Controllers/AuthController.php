@@ -3,60 +3,54 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Utils\CommonResponse;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
-use Tymon\JWTAuth\Exceptions\JWTException;
-use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Validator;
 
-class AuthController
+class AuthController extends Controller
 {
-    /**
-     * 
-     * register user
-     * 
-     */
-    public function register(Request $request, CommonResponse $commonResponse)
+    private $commonResponse;
+
+    public function __construct(CommonResponse $commonResponse)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|max:255|unique:users',
-            'password' => 'required|string|min:8'
-        ]);
-
-        User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password)
-        ]);
-
-        return $commonResponse->commonResponse(201, ['message' => 'User registered successfully']);
+        $this->commonResponse = $commonResponse;
+        $this->middleware('auth:api', ['except' => ['login']]);
     }
 
-    public function login(Request $request, CommonResponse $commonResponse)
+    public function login()
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string|min:8'
+        $validators = Validator::make(request(['email', 'password']), [
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string', 'min:8']
         ]);
 
-        $credentials = $request->only('email', 'password');
-
-        try {
-            if (!$token = JWTAuth::attempt($credentials)) {
-                return $commonResponse->commonResponse(401, ['message' => 'Unauthorized']);
-            }
-        } catch (JWTException) {
-            return $commonResponse->commonResponse(500, ['message' => 'Token created unsuccessfully']);
+        if ($validators->fails()) {
+            return $this->commonResponse->commonResponse(401, ['message'=> $validators->errors()]);
         }
 
-        return $commonResponse->commonResponse(200, ['token' => $token]);
+        $credentials = request(['email', 'password']);
+
+        if (! $token = Auth::attempt($credentials)) {
+            return $this->commonResponse->commonResponse(401, ['message' => 'Unauthorized']);
+        }
+
+        return $this->respondWithToken($token, 200);
     }
 
-    public function logout(CommonResponse $commonResponse)
+    public function logout()
     {
         Auth::logout();
-        return $commonResponse->commonResponse(200, ['message' => 'Logout successfull']);
+        return $this->commonResponse->commonResponse(200, ['message' => 'Logout successfull']);
+    }
+
+    protected function respondWithToken($token, $statusCode)
+    {
+        return $this->commonResponse->commonResponse($statusCode, [
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => Auth::factory()->getTTL() * 60
+        ]);
     }
 }
