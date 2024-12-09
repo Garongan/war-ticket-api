@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 use App\Utils\CommonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -16,7 +14,6 @@ class AuthController extends Controller
     public function __construct(CommonResponse $commonResponse)
     {
         $this->commonResponse = $commonResponse;
-        $this->middleware('auth:api', ['except' => ['login']]);
     }
 
     public function login()
@@ -27,7 +24,7 @@ class AuthController extends Controller
         ]);
 
         if ($validators->fails()) {
-            return $this->commonResponse->commonResponse(401, ['message'=> $validators->errors()]);
+            return $this->commonResponse->commonResponse(401, ['message' => $validators->errors()]);
         }
 
         $credentials = request(['email', 'password']);
@@ -36,7 +33,17 @@ class AuthController extends Controller
             return $this->commonResponse->commonResponse(401, ['message' => 'Unauthorized']);
         }
 
-        return $this->respondWithToken($token, 200);
+        return $this->respondWithToken(200, $token);
+    }
+
+    /**
+     * Refresh a token.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function refresh()
+    {
+        return $this->respondWithToken(200, Auth::refresh());
     }
 
     public function logout()
@@ -45,7 +52,7 @@ class AuthController extends Controller
         return $this->commonResponse->commonResponse(200, ['message' => 'Logout successfull']);
     }
 
-    protected function respondWithToken($token, $statusCode)
+    protected function respondWithToken($statusCode, $token)
     {
         return $this->commonResponse->commonResponse($statusCode, [
             'access_token' => $token,

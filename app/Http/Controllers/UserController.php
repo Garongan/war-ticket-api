@@ -7,6 +7,7 @@ use App\UserRole;
 use App\Utils\CommonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -17,6 +18,7 @@ class UserController extends Controller
     public function __construct(CommonResponse $commonResponse)
     {
         $this->commonResponse = $commonResponse;
+        $this->middleware('auth:api', ['except' => ['store']]);
     }
     /**
      * Display a listing of the resource.
@@ -58,9 +60,27 @@ class UserController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(User $user)
+    public function show(string $id)
     {
         //
+        $user = User::find($id);
+        if ($user == null) {
+            return $this->commonResponse->commonResponse(404, ['message' => 'User not found']);
+        }
+        return $this->commonResponse->commonResponse(200, [$user]);
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function me()
+    {
+        //
+        $user = Auth::user();
+        if ($user == null) {
+            return $this->commonResponse->commonResponse(404, ['message' => 'User not found']);
+        }
+        return $this->commonResponse->commonResponse(200, [$user]);
     }
 
     /**

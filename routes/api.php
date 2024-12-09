@@ -2,24 +2,30 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
-use App\UserRole;
-use App\Utils\CommonResponse;
-use GuzzleHttp\Psr7\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::group([
-    'middleware' => 'api',
-], function ($router) {
-    Route::group([
-        'prefix' => 'auth'
-    ], function ($router) {
-        Route::post('login', [AuthController::class, 'login'])->name('login');
-        Route::post('refresh', [AuthController::class, 'refresh'])->name('refresh-token');
-        Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+// No middleware
+Route::prefix('auth')->group(function () {
+    Route::post('login', [AuthController::class, 'login']);
+    Route::post('register', [UserController::class, 'store']);
+});
+
+// Api middleware
+Route::middleware('api')->group(function () {
+    // Auth
+    Route::prefix('auth')->group(function () {
+        Route::post('refresh', [AuthController::class, 'refresh']);
+        Route::post('logout', [AuthController::class, 'logout']);
     });
 
-    // User Controller
-    Route::resource('users', UserController::class)->except(['show'])->middleware('role:' . UserRole::Admin->value)->missing(function (CommonResponse $commonResponse) {
-        return $commonResponse->commonResponse(404, ['message' => 'Route not found']);
+    // Admin
+    Route::group(['middleware' => 'role:admin', 'prefix' => 'admin'], function () {
+        Route::get('users', [UserController::class, 'index']);
+        Route::get('users/{id}', [UserController::class, 'show']);
+    });
+
+    // User
+    Route::group(['middleware' => 'role:user'], function () {
+        Route::get('users/me', [UserController::class, 'me']);
     });
 });
