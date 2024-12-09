@@ -31,9 +31,9 @@ class UserController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Store a newly created resource in storage.
      */
-    public function create()
+    public function store(Request $request)
     {
         //
         $validators = Validator::make(request(['name', 'email', 'password']), [
@@ -46,21 +46,13 @@ class UserController extends Controller
             return $this->commonResponse->commonResponse(401, ['message' => $validators->errors()]);
         }
 
-        User::create([
+        $newUser = User::create([
             'name' => request()->name,
             'email' => request()->email,
             'password' => Hash::make(request()->password)
         ]);
 
-        return $this->commonResponse->commonResponse(201, ['message' => 'User registered successfully']);
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
+        return $this->commonResponse->commonResponse(201, [$newUser]);
     }
 
     /**
